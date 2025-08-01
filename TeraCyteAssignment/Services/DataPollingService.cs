@@ -53,10 +53,7 @@ namespace TeraCyteAssignment.Services
                 {
                     var inferenceDataResult = await ExtractInferenceData();
 
-                    if (inferenceDataResult.ImageId == _lastImageId)
-                    {
-                        return;
-                    }
+                    if (inferenceDataResult.ImageId == _lastImageId) return;
 
                     NewDataReceived?.Invoke(inferenceDataResult);
                 });

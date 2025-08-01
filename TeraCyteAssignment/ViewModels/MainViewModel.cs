@@ -13,90 +13,97 @@ using TeraCyteAssignment.Models;
 using TeraCyteAssignment.Services;
 using TeraCyteAssignment.Services.Interface;
 
-public partial class MainViewModel : ObservableObject
+namespace TeraCyteAssignment.ViewModels
 {
-    private readonly IAuthService _authService;
-    private readonly IDataPollingService _pollingService;
-    private readonly Credentials _credentials;
 
-    [ObservableProperty] 
-    private string _statusMessage = "Ready.";
-
-    [ObservableProperty] 
-    private bool _isLoading = true;
-
-    [ObservableProperty] 
-    private InferenceData? _currentData;
-
-    [ObservableProperty] 
-    private ImageSource? _currentImage;
-
-    public ObservableCollection<ISeries> HistogramSeries { get; } = new();
-    public Axis[] XAxes { get; set; } = { new Axis { Name = "Pixel Intensity", MinLimit = 0, MaxLimit = 255 } };
-
-    public MainViewModel(IAuthService authService, IDataPollingService pollingService, Credentials credentials)
+    public partial class MainViewModel : ObservableObject
     {
-        _authService = authService;
-        _pollingService = pollingService;
-        _credentials = credentials;
-        _pollingService.NewDataReceived += OnNewDataReceived;
-        _pollingService.ErrorOccurred += OnErrorOccurred;
-        LoginCommand = new AsyncRelayCommand(LoginAndStartPollingAsync);
-    }
+        private readonly IAuthService? _authService;
+        private readonly IDataPollingService? _pollingService;
+        private readonly Credentials? _credentials;
 
-    public IAsyncRelayCommand LoginCommand { get; }
+        [ObservableProperty] private string _statusMessage = "Ready.";
+        [ObservableProperty] private bool _isLoading = true;
+        [ObservableProperty] private InferenceData? _currentData;
+        [ObservableProperty] private ImageSource? _currentImage;
 
-    private async Task LoginAndStartPollingAsync()
-    {
-        IsLoading = true;
-        StatusMessage = "Authenticating...";
-        bool success = await _authService.LoginAsync(_credentials.Username, _credentials.Password);
-        if (success)
-        {
-            StatusMessage = "Authentication successful. Starting data polling...";
-            _pollingService.StartPolling();
-        }
-        else
-        {
-            StatusMessage = "Authentication failed. Please check credentials or server connection.";
-        }
-        IsLoading = false;
-    }
+        public ObservableCollection<ISeries> HistogramSeries { get; } = new();
+        public Axis[] XAxes { get; set; } = { new Axis { Name = "Pixel Intensity", MinLimit = 0, MaxLimit = 255 } };
 
-    private void OnNewDataReceived(InferenceData data)
-    {
-        CurrentData = data;
-        StatusMessage = $"Successfully loaded data for Image ID: {data.ImageId}";
-        try
+        public MainViewModel(IAuthService authService, IDataPollingService pollingService, Credentials credentials)
         {
-            var imageBytes = Convert.FromBase64String(data.Base64Image);
-            using var stream = new MemoryStream(imageBytes);
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.StreamSource = stream;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            CurrentImage = bitmap;
-        }
-        catch (Exception ex)
-        {
-            OnErrorOccurred($"Failed to decode image: {ex.Message}");
-            CurrentImage = null;
+            _authService = authService;
+            _pollingService = pollingService;
+            _credentials = credentials;
+
+            // Null checks to satisfy the compiler since the parameterless constructor doesn't initialize these.
+            if (_pollingService != null)
+            {
+                _pollingService.NewDataReceived += OnNewDataReceived;
+                _pollingService.ErrorOccurred += OnErrorOccurred;
+            }
+
+            LoginCommand = new AsyncRelayCommand(LoginAndStartPollingAsync);
         }
 
-        HistogramSeries.Clear();
-        HistogramSeries.Add(new ColumnSeries<int>
-        {
-            Values = data.Histogram,
-            Name = "Count",
-            Fill = new SolidColorPaint(SKColors.CornflowerBlue)
-        });
-    }
+        public IAsyncRelayCommand LoginCommand { get; }
 
-    private void OnErrorOccurred(string errorMessage)
-    {
-        StatusMessage = errorMessage;
-        IsLoading = false;
+        private async Task LoginAndStartPollingAsync()
+        {
+            if (_authService is null || _pollingService is null || _credentials is null) return;
+
+            IsLoading = true;
+            StatusMessage = "Authenticating...";
+            bool success = await _authService.LoginAsync(_credentials.Username, _credentials.Password);
+            if (success)
+            {
+                StatusMessage = "Authentication successful. Starting data polling...";
+                _pollingService.StartPolling();
+            }
+            else
+            {
+                StatusMessage = "Authentication failed. Please check credentials or server connection.";
+            }
+            IsLoading = false;
+        }
+
+        private void OnNewDataReceived(InferenceData data)
+        {
+            CurrentData = data;
+            StatusMessage = $"Successfully loaded data for Image ID: {data.ImageId}";
+            try
+            {
+                var imageBytes = Convert.FromBase64String(data.Base64Image);
+                using var stream = new MemoryStream(imageBytes);
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                CurrentImage = bitmap;
+            }
+            catch (Exception ex)
+            {
+                OnErrorOccurred($"Failed to decode image: {ex.Message} Retying");
+                return;
+                //CurrentImage = null;
+            }
+
+            HistogramSeries.Clear();
+            HistogramSeries.Add(new ColumnSeries<int>
+            {
+                Values = data.Histogram,
+                Name = "Count",
+                Fill = new SolidColorPaint(SKColors.CornflowerBlue)
+            });
+        }
+
+        private void OnErrorOccurred(string errorMessage)
+        {
+            StatusMessage = errorMessage;
+            IsLoading = false;
+        }
     }
 }
+

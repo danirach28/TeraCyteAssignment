@@ -9,7 +9,7 @@ namespace TeraCyteAssignment.Services.Interface
 {
     public interface IDataPollingService
     {
-        event Action<InferenceData>? NewDataReceived;
+        event Action<ImageResultPaireData>? NewDataReceived;
         event Action<string>? ErrorOccurred;
         void StartPolling();
         void StopPolling();

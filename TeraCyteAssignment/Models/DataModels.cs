@@ -34,7 +34,7 @@ namespace TeraCyteAssignment.Models
         [property: JsonPropertyName("histogram")] int[] Histogram
     );
 
-    public record InferenceData(
+    public record ImageResultPaireData(
         string ImageId,
         byte[]? imageBytes,
         string ClassificationLabel,

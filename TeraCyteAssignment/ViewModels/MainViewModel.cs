@@ -20,7 +20,7 @@ namespace TeraCyteAssignment.ViewModels
 
         [ObservableProperty] private string _statusMessage = "Ready.";
         [ObservableProperty] private bool _isLoading = true;
-        [ObservableProperty] private InferenceData? _currentData;
+        [ObservableProperty] private ImageResultPaireData? _currentData;
         [ObservableProperty] private ImageSource? _currentImage;
 
         public MainViewModel(IAuthService authService, IDataPollingService pollingService, Credentials credentials)
@@ -60,7 +60,7 @@ namespace TeraCyteAssignment.ViewModels
             IsLoading = false;
         }
 
-        private void OnNewDataReceived(InferenceData data)
+        private void OnNewDataReceived(ImageResultPaireData data)
         {
             StatusMessage = $"Successfully loaded data for Image ID: {data.ImageId}";
             try

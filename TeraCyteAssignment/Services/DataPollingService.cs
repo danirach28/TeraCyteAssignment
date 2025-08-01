@@ -17,7 +17,7 @@ namespace TeraCyteAssignment.Services
         private readonly AsyncRetryPolicy _retryPolicy;
         private string _lastImageId = string.Empty;
 
-        public event Action<InferenceData>? NewDataReceived;
+        public event Action<ImageResultPaireData>? NewDataReceived;
         public event Action<string>? ErrorOccurred;
 
         public DataPollingService(IApiService apiService, IAuthService authService)
@@ -51,34 +51,14 @@ namespace TeraCyteAssignment.Services
 
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    var imageResponse = await _apiService.GetImageAsync();
-                    if (imageResponse == null) throw new InvalidOperationException("API returned a null image response.");
+                    var inferenceDataResult = await ExtractInferenceData();
 
-                    if (imageResponse.ImageId == _lastImageId)
+                    if (inferenceDataResult.ImageId == _lastImageId)
                     {
                         return;
                     }
 
-                    var resultsResponse = await _apiService.GetResultsAsync();
-                    if (resultsResponse == null) throw new InvalidOperationException("API returned a null results response.");
-
-                    if (resultsResponse.ImageId != imageResponse.ImageId)
-                    {
-                        throw new InvalidOperationException($"Result ID '{resultsResponse.ImageId}' does not match Image ID '{imageResponse.ImageId}'. Retrying for matching data...");
-                    }
-
-                    var imageBytes = ValidateImage(imageResponse.Base64ImageData);
-
-                    _lastImageId = imageResponse.ImageId;
-                    var newData = new InferenceData(
-                        imageResponse.ImageId,
-                        imageBytes,
-                        resultsResponse.ClassificationLabel,
-                        resultsResponse.FocusScore,
-                        resultsResponse.IntensityAverage,
-                        resultsResponse.Histogram
-                    );
-                    NewDataReceived?.Invoke(newData);
+                    NewDataReceived?.Invoke(inferenceDataResult);
                 });
             }
             catch (Exception ex)
@@ -92,6 +72,30 @@ namespace TeraCyteAssignment.Services
                     _pollingTimer.Start();
                 }
             }
+        }
+
+        private async Task<ImageResultPaireData> ExtractInferenceData()
+        {
+            var imageResponse = await _apiService.GetImageAsync();
+            if (imageResponse == null) throw new InvalidOperationException("API returned a null image response.");
+
+            var resultsResponse = await _apiService.GetResultsAsync();
+            if (resultsResponse == null) throw new InvalidOperationException("API returned a null results response.");
+
+            if (resultsResponse.ImageId != imageResponse.ImageId)
+            {
+                throw new InvalidOperationException($"Result ID '{resultsResponse.ImageId}' does not match Image ID '{imageResponse.ImageId}'. Retrying for matching data...");
+            }
+
+            var imageBytes = ValidateImage(imageResponse.Base64ImageData);
+            return new ImageResultPaireData(
+                        imageResponse.ImageId,
+                        imageBytes,
+                        resultsResponse.ClassificationLabel,
+                        resultsResponse.FocusScore,
+                        resultsResponse.IntensityAverage,
+                        resultsResponse.Histogram
+                    );
         }
 
         private byte[]? ValidateImage(string base64Image)

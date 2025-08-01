@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,9 +24,22 @@ namespace TeraCyteAssignment.Services
         {
             _apiService = apiService;
             _authService = authService;
-            _pollingTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _pollingTimer = new DispatcherTimer { Interval = TimeSpan.FromMicroseconds(500) };
             _pollingTimer.Tick += OnTimerTick;
         }
+
+        //private async Task<InferenceData> GetInferenceResult()
+        //{
+        //    var imageResponse = await _apiService.GetImageAsync();
+        //    return new InferenceData(
+        //                    imageResponse.ImageId,
+        //                    imageResponse.Base64ImageData,
+        //                    resultsResponse.ClassificationLabel,
+        //                    resultsResponse.FocusScore,
+        //                    resultsResponse.IntensityAverage,
+        //                    resultsResponse.Histogram
+        //                );
+        //}
 
         private async void OnTimerTick(object? sender, EventArgs e)
         {
@@ -44,6 +58,7 @@ namespace TeraCyteAssignment.Services
                     var resultsResponse = await _apiService.GetResultsAsync();
                     if (resultsResponse != null && resultsResponse.ImageId == imageResponse.ImageId)
                     {
+                        ValidateImage(imageResponse.Base64ImageData);
                         _lastImageId = imageResponse.ImageId;
                         var newData = new InferenceData(
                             imageResponse.ImageId,
@@ -62,6 +77,26 @@ namespace TeraCyteAssignment.Services
                 ErrorOccurred?.Invoke($"An error occurred: {ex.Message} Retrying.");
             }
             _pollingTimer.Start();
+        }
+
+        private void ValidateImage(string base64Image)
+        {
+            try
+            {
+                var imageBytes = Convert.FromBase64String(base64Image);
+                // We can do a quick check to see if it's a valid image stream.
+                // Creating the full BitmapImage isn't necessary here, just validating the data.
+                using var stream = new MemoryStream(imageBytes);
+                if (stream.Length == 0)
+                {
+                    throw new InvalidDataException("Decoded image stream is empty.");
+                }
+            }
+            catch (FormatException ex)
+            {
+                // This catches invalid base64 characters.
+                throw new InvalidDataException("Image data is not a valid base64 string.", ex);
+            }
         }
 
         public void StartPolling()

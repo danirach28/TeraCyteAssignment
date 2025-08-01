@@ -42,6 +42,8 @@ namespace TeraCyteAssignment.Models
         float IntensityAverage,
         int[] Histogram
     );
+
+    public record HistogramBar(double Left, double Height, double Width);
 }
 
 

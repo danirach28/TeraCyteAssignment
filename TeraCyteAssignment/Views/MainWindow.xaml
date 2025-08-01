@@ -15,6 +15,7 @@
     <Window.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <converters:HistogramBarsConverter x:Key="HistogramBarsConverter"/>
     </Window.Resources>
         
     <Grid>
@@ -68,6 +69,39 @@
                                 <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CurrentData.IntensityAverage, StringFormat={}{0:F1}, FallbackValue='N/A'}" VerticalAlignment="Center"/>
                             </Grid>
                             <TextBlock Text="Intensity Histogram" FontSize="18" FontWeight="SemiBold" Foreground="#333333" Margin="0,10,0,5"/>
+                            <Border BorderBrush="#CCCCCC" BorderThickness="1" Height="100" VerticalAlignment="Bottom" Name="HistogramContainer">
+                                <ItemsControl>
+                                    <ItemsControl.ItemsSource>
+                                        <!-- This MultiBinding is the key to the solution -->
+                                        <MultiBinding Converter="{StaticResource HistogramBarsConverter}">
+                                            <!-- Input 1: The raw histogram data array -->
+                                            <Binding Path="CurrentData.Histogram"/>
+                                            <!-- Input 2: The live width of the container -->
+                                            <Binding Path="ActualWidth" ElementName="HistogramContainer"/>
+                                            <!-- Input 3: The live height of the container -->
+                                            <Binding Path="ActualHeight" ElementName="HistogramContainer"/>
+                                        </MultiBinding>
+                                    </ItemsControl.ItemsSource>
+
+                                    <!-- The rest of the ItemsControl is unchanged -->
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <Canvas/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="Canvas.Bottom" Value="0"/>
+                                            <Setter Property="Canvas.Left" Value="{Binding Left}"/>
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Rectangle Fill="CornflowerBlue" Width="{Binding Width}" Height="{Binding Height}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
                             <!--<lvc:CartesianChart Series="{Binding HistogramSeries}" XAxes="{Binding XAxes}" Height="250" ZoomMode="None" LegendPosition="Bottom"/>-->
                         </StackPanel>
                     </ScrollViewer>

@@ -69,7 +69,6 @@ namespace TeraCyteAssignment.ViewModels
 
         private void OnNewDataReceived(InferenceData data)
         {
-            CurrentData = data;
             StatusMessage = $"Successfully loaded data for Image ID: {data.ImageId}";
             try
             {
@@ -90,13 +89,14 @@ namespace TeraCyteAssignment.ViewModels
                 //CurrentImage = null;
             }
 
-            HistogramSeries.Clear();
-            HistogramSeries.Add(new ColumnSeries<int>
-            {
-                Values = data.Histogram,
-                Name = "Count",
-                Fill = new SolidColorPaint(SKColors.CornflowerBlue)
-            });
+            //HistogramSeries.Clear();
+            //HistogramSeries.Add(new ColumnSeries<int>
+            //{
+            //    Values = data.Histogram,
+            //    Name = "Count",
+            //    Fill = new SolidColorPaint(SKColors.CornflowerBlue)
+            //});
+            CurrentData = data;
         }
 
         private void OnErrorOccurred(string errorMessage)

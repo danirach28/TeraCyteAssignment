@@ -1,9 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LiveChartsCore;
-using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.Painting;
-using SkiaSharp;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Media;
@@ -26,9 +22,6 @@ namespace TeraCyteAssignment.ViewModels
         [ObservableProperty] private bool _isLoading = true;
         [ObservableProperty] private InferenceData? _currentData;
         [ObservableProperty] private ImageSource? _currentImage;
-
-        public ObservableCollection<ISeries> HistogramSeries { get; } = new();
-        public Axis[] XAxes { get; set; } = { new Axis { Name = "Pixel Intensity", MinLimit = 0, MaxLimit = 255 } };
 
         public MainViewModel(IAuthService authService, IDataPollingService pollingService, Credentials credentials)
         {
@@ -71,9 +64,8 @@ namespace TeraCyteAssignment.ViewModels
         {
             StatusMessage = $"Successfully loaded data for Image ID: {data.ImageId}";
             try
-            {
-                var imageBytes = Convert.FromBase64String(data.Base64Image);
-                using var stream = new MemoryStream(imageBytes);
+            { 
+                using var stream = new MemoryStream(data.imageBytes);
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;

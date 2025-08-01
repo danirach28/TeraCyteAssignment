@@ -6,8 +6,6 @@ using TeraCyteAssignment.Services.Interface;
 using TeraCyteAssignment.Services;
 using TeraCyteAssignment.ViewModels;
 using TeraCyteAssignment.Views;
-using Windows.Services.Maps;
-using Windows.UI.ViewManagement;
 using System.Net.Http;
 
 

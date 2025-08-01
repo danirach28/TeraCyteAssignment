@@ -36,7 +36,7 @@ namespace TeraCyteAssignment.Models
 
     public record InferenceData(
         string ImageId,
-        string Base64Image,
+        byte[]? imageBytes,
         string ClassificationLabel,
         float FocusScore,
         float IntensityAverage,

@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Polly;
+using Polly.Retry;
+using System;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using TeraCyteAssignment.Models;
@@ -15,6 +14,7 @@ namespace TeraCyteAssignment.Services
         private readonly IApiService _apiService;
         private readonly IAuthService _authService;
         private readonly DispatcherTimer _pollingTimer;
+        private readonly AsyncRetryPolicy _retryPolicy;
         private string _lastImageId = string.Empty;
 
         public event Action<InferenceData>? NewDataReceived;
@@ -24,26 +24,23 @@ namespace TeraCyteAssignment.Services
         {
             _apiService = apiService;
             _authService = authService;
-            _pollingTimer = new DispatcherTimer { Interval = TimeSpan.FromMicroseconds(500) };
-            _pollingTimer.Tick += OnTimerTick;
-        }
 
-        //private async Task<InferenceData> GetInferenceResult()
-        //{
-        //    var imageResponse = await _apiService.GetImageAsync();
-        //    return new InferenceData(
-        //                    imageResponse.ImageId,
-        //                    imageResponse.Base64ImageData,
-        //                    resultsResponse.ClassificationLabel,
-        //                    resultsResponse.FocusScore,
-        //                    resultsResponse.IntensityAverage,
-        //                    resultsResponse.Histogram
-        //                );
-        //}
+            _pollingTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _pollingTimer.Tick += OnTimerTick;
+
+            _retryPolicy = Policy
+                .Handle<Exception>()
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(1),
+                    (exception, timeSpan, retryCount, context) =>
+                    {
+                        ErrorOccurred?.Invoke($"[Retry {retryCount}] Error: {exception.Message}. Retrying in {timeSpan.Seconds}s...");
+                    });
+        }
 
         private async void OnTimerTick(object? sender, EventArgs e)
         {
             _pollingTimer.Stop();
+
             try
             {
                 if (!_authService.IsLoggedIn)
@@ -52,49 +49,64 @@ namespace TeraCyteAssignment.Services
                     return;
                 }
 
-                var imageResponse = await _apiService.GetImageAsync();
-                if (imageResponse != null && imageResponse.ImageId != _lastImageId)
+                await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    var resultsResponse = await _apiService.GetResultsAsync();
-                    if (resultsResponse != null && resultsResponse.ImageId == imageResponse.ImageId)
+                    var imageResponse = await _apiService.GetImageAsync();
+                    if (imageResponse == null) throw new InvalidOperationException("API returned a null image response.");
+
+                    if (imageResponse.ImageId == _lastImageId)
                     {
-                        ValidateImage(imageResponse.Base64ImageData);
-                        _lastImageId = imageResponse.ImageId;
-                        var newData = new InferenceData(
-                            imageResponse.ImageId,
-                            imageResponse.Base64ImageData,
-                            resultsResponse.ClassificationLabel,
-                            resultsResponse.FocusScore,
-                            resultsResponse.IntensityAverage,
-                            resultsResponse.Histogram
-                        );
-                        NewDataReceived?.Invoke(newData);
+                        return;
                     }
-                }
+
+                    var resultsResponse = await _apiService.GetResultsAsync();
+                    if (resultsResponse == null) throw new InvalidOperationException("API returned a null results response.");
+
+                    if (resultsResponse.ImageId != imageResponse.ImageId)
+                    {
+                        throw new InvalidOperationException($"Result ID '{resultsResponse.ImageId}' does not match Image ID '{imageResponse.ImageId}'. Retrying for matching data...");
+                    }
+
+                    var imageBytes = ValidateImage(imageResponse.Base64ImageData);
+
+                    _lastImageId = imageResponse.ImageId;
+                    var newData = new InferenceData(
+                        imageResponse.ImageId,
+                        imageBytes,
+                        resultsResponse.ClassificationLabel,
+                        resultsResponse.FocusScore,
+                        resultsResponse.IntensityAverage,
+                        resultsResponse.Histogram
+                    );
+                    NewDataReceived?.Invoke(newData);
+                });
             }
             catch (Exception ex)
             {
-                ErrorOccurred?.Invoke($"An error occurred: {ex.Message} Retrying.");
+                ErrorOccurred?.Invoke($"Failed to retrieve data after multiple retries: {ex.Message}");
             }
-            _pollingTimer.Start();
+            finally
+            {
+                if (_authService.IsLoggedIn)
+                {
+                    _pollingTimer.Start();
+                }
+            }
         }
 
-        private void ValidateImage(string base64Image)
+        private byte[]? ValidateImage(string base64Image)
         {
             try
             {
                 var imageBytes = Convert.FromBase64String(base64Image);
-                // We can do a quick check to see if it's a valid image stream.
-                // Creating the full BitmapImage isn't necessary here, just validating the data.
-                using var stream = new MemoryStream(imageBytes);
-                if (stream.Length == 0)
+                if (imageBytes.Length == 0)
                 {
                     throw new InvalidDataException("Decoded image stream is empty.");
                 }
+                return imageBytes;
             }
             catch (FormatException ex)
             {
-                // This catches invalid base64 characters.
                 throw new InvalidDataException("Image data is not a valid base64 string.", ex);
             }
         }
@@ -107,5 +119,4 @@ namespace TeraCyteAssignment.Services
 
         public void StopPolling() => _pollingTimer.Stop();
     }
-
 }

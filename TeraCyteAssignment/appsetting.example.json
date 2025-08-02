@@ -1,0 +1,9 @@
+{
+  "ApiSettings": {
+    "BaseUrl": "https://your-base-url-serever-here"
+  },
+  "Credentials": {
+    "Username": "your-username",
+    "Password": "your-password"
+  }
+}

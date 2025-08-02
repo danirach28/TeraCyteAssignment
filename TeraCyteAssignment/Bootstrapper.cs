@@ -9,34 +9,36 @@ using TeraCyteAssignment.Views;
 using System.Net.Http;
 
 
-namespace TeraCyteAssignment;
-
-public static class Bootstrapper
+namespace TeraCyteAssignment
 {
-    public static void ConfigureServices(IServiceCollection services)
+    public static class Bootstrapper
     {
-        var configuration = new ConfigurationBuilder()
-                    .SetBasePath(AppContext.BaseDirectory)
-                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                    .Build();
-
-        var apiSettings = configuration.GetSection("ApiSettings").Get<ApiSettings>() ?? new ApiSettings();
-        var credentials = configuration.GetSection("Credentials").Get<Credentials>() ?? new Credentials();
-
-        services.AddSingleton(apiSettings);
-        services.AddSingleton(credentials);
-
-        services.AddSingleton(new HttpClient
+        public static void ConfigureServices(IServiceCollection services)
         {
-            BaseAddress = new Uri(apiSettings.BaseUrl)
-        });
+            var configuration = new ConfigurationBuilder()
+                        .SetBasePath(AppContext.BaseDirectory)
+                        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                        .Build();
 
-        services.AddSingleton<IAuthService, AuthService>();
+            var apiSettings = configuration.GetSection("ApiSettings").Get<ApiSettings>() ?? new ApiSettings();
+            var credentials = configuration.GetSection("Credentials").Get<Credentials>() ?? new Credentials();
 
-        services.AddSingleton<IApiService, ApiService>();
-        services.AddSingleton<IDataPollingService, DataPollingService>();
+            services.AddSingleton(apiSettings);
+            services.AddSingleton(credentials);
 
-        services.AddSingleton<MainViewModel>();
-        services.AddSingleton<MainWindow>();
+            services.AddSingleton(new HttpClient
+            {
+                BaseAddress = new Uri(apiSettings.BaseUrl)
+            });
+
+            services.AddSingleton<IAuthService, AuthService>();
+
+            services.AddSingleton<IApiService, ApiService>();
+            services.AddSingleton<IDataPollingService, DataPollingService>();
+
+            services.AddSingleton<MainViewModel>();
+            services.AddSingleton<MainWindow>();
+        }
     }
 }
+

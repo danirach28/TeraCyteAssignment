@@ -5,63 +5,65 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using TeraCyteAssignment.Models;
 
-namespace TeraCyteAssignment.ViewModels;
-
-public partial class ImageResultPairViewModel : ObservableObject
+namespace TeraCyteAssignment.ViewModels
 {
-    public ImageResultPaireData Data { get; }
-
-
-    public ImageSource Thumbnail { get; }
-
-    private ImageSource? _fullResolutionImage;
-
-
-    public ImageSource FullResolutionImage
+    public partial class ImageResultPairViewModel : ObservableObject
     {
-        get
+        public ImageResultPaireData Data { get; }
+
+
+        public ImageSource Thumbnail { get; }
+
+        private ImageSource? _fullResolutionImage;
+
+
+        public ImageSource FullResolutionImage
         {
-            // Lazy-loading pattern: If the image hasn't been created yet, create it now.
-            if (_fullResolutionImage == null)
+            get
             {
-                _fullResolutionImage = CreateImageFromBase64(Data.imageBytes, isThumbnail: false);
+                // Lazy-loading pattern: If the image hasn't been created yet, create it now.
+                if (_fullResolutionImage == null)
+                {
+                    _fullResolutionImage = CreateImageFromBase64(Data.imageBytes, isThumbnail: false);
+                }
+                return _fullResolutionImage;
             }
-            return _fullResolutionImage;
         }
-    }
 
-    public string ImageId => Data.ImageId;
+        public string ImageId => Data.ImageId;
 
-    public ImageResultPairViewModel(ImageResultPaireData data)
-    {
-        Data = data;
-        Thumbnail = CreateImageFromBase64(data.imageBytes, isThumbnail: true);
-
-    }
-
-    private static ImageSource CreateImageFromBase64(byte[]? imageBytes, bool isThumbnail)
-    {
-        try
+        public ImageResultPairViewModel(ImageResultPaireData data)
         {
-            using var stream = new MemoryStream(imageBytes);
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
+            Data = data;
+            Thumbnail = CreateImageFromBase64(data.imageBytes, isThumbnail: true);
 
-            // If creating a thumbnail, set the DecodePixelWidth to save memory.
-            if (isThumbnail)
+        }
+
+        private static ImageSource CreateImageFromBase64(byte[]? imageBytes, bool isThumbnail)
+        {
+            try
             {
-                bitmap.DecodePixelWidth = 100;
-            }
+                using var stream = new MemoryStream(imageBytes);
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
 
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.StreamSource = stream;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return bitmap;
-        }
-        catch
-        {
-            return new BitmapImage();
+                // If creating a thumbnail, set the DecodePixelWidth to save memory.
+                if (isThumbnail)
+                {
+                    bitmap.DecodePixelWidth = 100;
+                }
+
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                return bitmap;
+            }
+            catch
+            {
+                return new BitmapImage();
+            }
         }
     }
 }
+
